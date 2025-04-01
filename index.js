@@ -10,16 +10,16 @@ const API_KEY = process.env.API_KEY;
 
 // 🚀 API to Generate JWT Token
 app.post("/get-token", (req, res) => {
-    const { apiKey, userId } = req.body;
+    const { apiKey, paymentId } = req.body;
 
     if (apiKey !== API_KEY) {
         return res.status(403).json({ error: "Invalid API Key" });
     }
-    if (!userId) {
-        return res.status(400).json({ error: "userId is required" });
+    if (!paymentId) {
+        return res.status(400).json({ error: "paymentId is required" });
     }
 
-    const token = jwt.sign({ userId }, SECRET_KEY, { expiresIn: "1h" });
+    const token = jwt.sign({ paymentId }, SECRET_KEY, { expiresIn: "1h" });
     res.json({ token });
 });
 
@@ -64,5 +64,5 @@ function authenticateToken(req, res, next) {
 }
 
 // 🚀 Start the Server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3005;
 app.listen(PORT, () => console.log(`🔥 Server running on http://localhost:${PORT}`));
