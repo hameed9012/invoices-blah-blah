@@ -24,8 +24,15 @@ app.post("/get-token", (req, res) => {
 });
 
 // 🚀 Protected API Endpoint
-app.get("/api/data", authenticateToken, (req, res) => {
+app.post("/api/data", authenticateToken, (req, res) => {
+    const { paymentId } = req.body;
+
+    if (!paymentId) {
+        return res.status(400).json({ error: "Payment ID is required" });
+    }
+
     res.json({
+        paymentId: paymentId,
         paymentTotalAmount: 200.0,
         paymentCurrency: "USD",
         invoices: [
