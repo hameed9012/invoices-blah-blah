@@ -23,6 +23,34 @@ app.post("/get-token", (req, res) => {
     res.json({ token });
 });
 
+
+app.post("/geo-save", authenticateToken, (req, res) => {
+    const { userId, country } = req.body;
+
+    if (!userId || !country) {
+        return res.status(400).json({ error: "Both userId and country are required" });
+    }
+
+    res.json({ message: "success" });
+});
+
+app.post("/api/data/business", authenticateToken, (req, res) => {
+    const { userId, businessData } = req.body;
+
+    if (!userId || !businessData) {
+        return res.status(400).json({ error: "Both userId and businessData are required" });
+    }
+
+    const { name, country, address, city, postalCode, vatId } = businessData;
+
+    if (!name || !country || !address || !city || !postalCode || !vatId) {
+        return res.status(400).json({ error: "All fields (name, country, address, city, postalCode, vatId) are required" });
+    }
+
+    res.json({ message: "success" });
+});
+
+
 // 🚀 Protected API Endpoint
 app.post("/api/data", authenticateToken, (req, res) => {
     const { paymentId } = req.body;
@@ -40,19 +68,23 @@ app.post("/api/data", authenticateToken, (req, res) => {
             { invoiceId: "INV-002", amount: 100.0, url: "https://stripe.com", paid: false },
         ],
         paymentDescription: "Payment for website development services",
-        vat: { country: "IT", rate: "22" },
+        vat: { 
+	//	country: "IT",
+	//	rate: "22" 
+	},
         business: {
-            id: "VAT ID",
-            country: "COUNTRY",
-            city: "CITY",
-            name: "NAME",
-            address: "address",
-            postalCode: "POSTAL CODE"
+        //    id: "VAT ID",
+        //    country: "COUNTRY",
+        //    city: "CITY",
+        //    name: "NAME",
+        //    address: "address",
+        //    postalCode: "POSTAL CODE"
         },
-        isNewCustomer: false,
+        isNewCustomer: true,
         creditAmount: 10,
         balanceAmount: 0,
-        amountDue: 190
+        amountDue: 190,
+        customerId: 1
     });
 });
 
