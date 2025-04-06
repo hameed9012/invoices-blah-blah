@@ -8,8 +8,8 @@ app.use(express.json());
 const SECRET_KEY = process.env.SECRET_KEY;
 const API_KEY = process.env.API_KEY;
 
-// 🔐 AUTH - Token Generation
-app.get("/auth/token", (req, res) => {
+// 🚀 API to Generate JWT Token
+app.post("/auth/token", (req, res) => {
     const { applicationId, key } = req.body;
 
     if (!applicationId || !key) {
@@ -24,7 +24,8 @@ app.get("/auth/token", (req, res) => {
     res.json({ token });
 });
 
-// 🧾 GET PAYMENT INFO
+
+//PAYMENT INFO
 app.get("/checkout/data/:paymentId", authenticateToken, (req, res) => {
     const { paymentId } = req.params;
 
@@ -41,7 +42,7 @@ app.get("/checkout/data/:paymentId", authenticateToken, (req, res) => {
             { invoiceId: "INV-002", amount: 100.0, url: "https://stripe.com", paid: false },
         ],
         paymentDescription: "Payment for website development services",
-        isNewCustomer: true,
+        isNewCustomer: false,
         creditAmount: 10,
         balanceAmount: 0,
         amountDue: 190,
@@ -59,34 +60,34 @@ app.post("/stripe/customer/update/:customerId", authenticateToken, (req, res) =>
         city,
         country,
         vatValue,
-        vatType
+        vatType,
+        region
     } = req.body;
 
-    if (!customerId || !name || !billingAddressLine1 || !postalCode || !city || !country || !vatValue || !vatType) {
-        return res.status(400).json({ error: `All fields are required ${customerId}, ${name}, ${billingAddressLine1}, ${postalCode}, ${city}, ${country}, ${vatValue}, ${vatType}
-             ${JSON.stringify(req.body)}` });
+    // Check if either Business or Geolocation data is present
+    const isBusinessData = name && billingAddressLine1 && vatValue && vatType;
+    const isGeolocationData = postalCode && city && country && region;
+
+    // Validation for both Business and Geolocation data
+    if (!customerId || (!isBusinessData && !isGeolocationData)) {
+        return res.status(400).json({
+            error: `Missing required fields for the data type. CustomerId: ${customerId}, Received Data: ${JSON.stringify(req.body)}`
+        });
     }
 
-    // Only allow VAT types ending in _vat
-    if (!vatType.endsWith("_vat")) {
-        return res.status(400).json({ error: "Invalid vatType. Only types ending in '_vat' are supported." });
+    // Business Data Validation (only check for VAT and related fields if Business data is present)
+    if (isBusinessData) {
+        //if (!vatType.endsWith("_vat")) {
+        //    return res.status(400).json({ error: "Invalid vatType. Only types ending in '_vat' are supported." });
+        //}
     }
 
+    console.log("received POST request on /stripe/customer/update");
     res.json({ message: "Customer data updated successfully" });
 });
 
-// 🌍 SAVE GEOLOCATION DATA
-app.post("/stripe/customer/geolocation", authenticateToken, (req, res) => {
-    const { postalCode, city, country, region } = req.body;
 
-    if (!postalCode || !city || !country || !region) {
-        return res.status(400).json({ error: "postalCode, city, country, and region are required" });
-    }
-
-    res.json({ message: "Geolocation data saved successfully" });
-});
-
-// 🔒 Middleware to Validate JWT
+//Middleware to Validate JWT
 function authenticateToken(req, res, next) {
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
@@ -101,5 +102,6 @@ function authenticateToken(req, res, next) {
 }
 
 // 🚀 Start the Server
+//app.options("/auth/token", cors(corsOptions));
 const PORT = process.env.PORT || 3005;
 app.listen(PORT, () => console.log(`🔥 Server running on http://localhost:${PORT}`));
