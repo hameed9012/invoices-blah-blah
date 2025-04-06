@@ -7,35 +7,24 @@ app.use(express.json());
 
 const SECRET_KEY = process.env.SECRET_KEY;
 const API_KEY = process.env.API_KEY;
-const APPLICATION_ID = process.env.APPLICATION_ID;
 
-// 🔐 Generate Auth Token
+// 🔐 AUTH - Token Generation
 app.get("/auth/token", (req, res) => {
     const { applicationId, key } = req.body;
 
-    if (applicationId !== APPLICATION_ID || key !== API_KEY) {
-        return res.status(403).json({ error: "Invalid Application ID or API Key" });
+    if (!applicationId || !key) {
+        return res.status(400).json({ error: "applicationId and key are required" });
     }
 
-    const token = jwt.sign({ app: applicationId }, SECRET_KEY, { expiresIn: "1h" });
+    if (key !== API_KEY) {
+        return res.status(403).json({ error: "Invalid API Key" });
+    }
+
+    const token = jwt.sign({ applicationId }, SECRET_KEY, { expiresIn: "1h" });
     res.json({ token });
 });
 
-// 🧠 Middleware: Token Auth
-function authenticateToken(req, res, next) {
-    const authHeader = req.headers["authorization"];
-    const token = authHeader && authHeader.split(" ")[1];
-
-    if (!token) return res.status(401).json({ error: "Access denied. No token provided." });
-
-    jwt.verify(token, SECRET_KEY, (err, decoded) => {
-        if (err) return res.status(403).json({ error: "Invalid or expired token" });
-        req.user = decoded;
-        next();
-    });
-}
-
-// 💰 Get Payment Info
+// 🧾 GET PAYMENT INFO
 app.get("/checkout/data/:paymentId", authenticateToken, (req, res) => {
     const { paymentId } = req.params;
 
@@ -44,7 +33,7 @@ app.get("/checkout/data/:paymentId", authenticateToken, (req, res) => {
     }
 
     res.json({
-        paymentId,
+        paymentId: paymentId,
         paymentTotalAmount: 200.0,
         paymentCurrency: "USD",
         invoices: [
@@ -52,12 +41,6 @@ app.get("/checkout/data/:paymentId", authenticateToken, (req, res) => {
             { invoiceId: "INV-002", amount: 100.0, url: "https://stripe.com", paid: false },
         ],
         paymentDescription: "Payment for website development services",
-        vat: {
-            // You can fill this if needed
-        },
-        business: {
-            // You can fill this if needed
-        },
         isNewCustomer: true,
         creditAmount: 10,
         balanceAmount: 0,
@@ -66,7 +49,7 @@ app.get("/checkout/data/:paymentId", authenticateToken, (req, res) => {
     });
 });
 
-// 🏢 Save Customer Business Data
+// 👤 SAVE CUSTOMER DATA
 app.post("/stripe/customer/update/:customerId", authenticateToken, (req, res) => {
     const { customerId } = req.params;
     const {
@@ -80,29 +63,43 @@ app.post("/stripe/customer/update/:customerId", authenticateToken, (req, res) =>
     } = req.body;
 
     if (!customerId || !name || !billingAddressLine1 || !postalCode || !city || !country || !vatValue || !vatType) {
-        return res.status(400).json({ error: "All customer fields are required" });
+        return res.status(400).json({ error: `All fields are required ${customerId}, ${name}, ${billingAddressLine1}, ${postalCode}, ${city}, ${country}, ${vatValue}, ${vatType}
+             ${JSON.stringify(req.body)}` });
     }
 
+    // Only allow VAT types ending in _vat
     if (!vatType.endsWith("_vat")) {
-        return res.status(400).json({ error: "Invalid vatType. Must end with '_vat'" });
+        return res.status(400).json({ error: "Invalid vatType. Only types ending in '_vat' are supported." });
     }
 
-    res.json({ message: "Customer data saved successfully", customerId });
+    res.json({ message: "Customer data updated successfully" });
 });
 
-// 🌍 Save Geolocation Data
+// 🌍 SAVE GEOLOCATION DATA
 app.post("/stripe/customer/geolocation", authenticateToken, (req, res) => {
     const { postalCode, city, country, region } = req.body;
 
     if (!postalCode || !city || !country || !region) {
-        return res.status(400).json({ error: "All geolocation fields are required" });
+        return res.status(400).json({ error: "postalCode, city, country, and region are required" });
     }
 
-    res.json({ message: "Geolocation saved successfully" });
+    res.json({ message: "Geolocation data saved successfully" });
 });
 
-// 🚀 Start Server
+// 🔒 Middleware to Validate JWT
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) return res.status(401).json({ error: "Access denied. No token provided." });
+
+    jwt.verify(token, SECRET_KEY, (err, user) => {
+        if (err) return res.status(403).json({ error: "Invalid token" });
+        req.user = user;
+        next();
+    });
+}
+
+// 🚀 Start the Server
 const PORT = process.env.PORT || 3005;
-app.listen(PORT, () => {
-    console.log(`🔥 API Server running on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`🔥 Server running on http://localhost:${PORT}`));
